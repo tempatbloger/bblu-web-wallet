@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <title>BitcoinII Paper Wallet — Generate Otomatis</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body {
+      font-family: system-ui, Arial;
+      padding: 18px;
+      background: #f4f6f8;
+      color: #111;
+      margin: 0;
+    }
+    h1 {
+      font-size: 18px;
+      margin: 0 0 12px;
+    }
+    .card {
+      background: #fff;
+      padding: 12px;
+      border-radius: 8px;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    label {
+      width: 160px;
+      font-size: 14px;
+    }
+    input[type="text"], input[type="number"], select {
+      padding: 6px;
+      border: 1px solid #cfcfcf;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    input[type="number"] {
+      width: 120px;
+    }
+    button {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 0;
+      background: #0b63ff;
+      color: white;
+      cursor: pointer;
+    }
+    #canvas {
+      display: block;
+      margin-top: 12px;
+      border: 1px solid #ddd;
+      max-width: 100%;
+      height: auto;
+    }
+    .muted {
+      color: #666;
+      font-size: 15px;
+    }
+    .status {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #7a2;
+    }
+    .warning {
+      color: #b33;
+    }
+
+    /* Mode cetak */
+    @media print {
+      body { background: white; }
+      .card { 
+        box-shadow: none; 
+        border: 1px solid #000; 
+        margin: 0; 
+        padding: 0; 
+        width: 100%;
+        max-width: none;
+      }
+      #btnGenerate, #btnPrint, #msg, #msgWarn, hr, .row {
+        display: none !important;
+      }
+      canvas {
+        border: none !important;
+        margin: 0 !important;
+        display: block !important;
+        width: 100% !important;
+        height: auto !important;
+      }
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+      body, html {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>BitcoinII Paper Wallet : Donations bc2: 1asbxZfb3dByu5RxMakshVMt1GWNGToRp</h1>
+
+  <div class="card">
+    <!-- Pilihan Tipe Alamat -->
+    <div class="row">
+      <label>Tipe Alamat</label>
+      <select id="addrType">
+        <option value="manual">1. Manual (input sendiri)</option>
+        <option value="p2pkh_comp">2. P2PKH (1...) Compressed</option>
+        <option value="p2pkh_uncomp">3. P2PKH Uncompressed</option>
+        <option value="p2sh_p2wpkh">4. P2SH-P2WPKH (3...)</option>
+        <option value="bech32">5. Bech32 (bc1...)</option>
+      </select>
+      <button id="btnGenerateKey">Generate Otomatis</button>
+    </div>
+
+    <!-- Input Alamat dan Private Key -->
+    <div class="row">
+      <label>Public address</label>
+      <input id="pubAddr" type="text" size="60" value="1asbxZfb3dByu5RxMakshVMt1GWNGToRp">
+    </div>
+
+    <div class="row">
+      <label>Private key (WIF/HEX)</label>
+      <input id="privKey" type="text" size="60" value="KwDiBf8xxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+    </div>
+
+    <!-- ID Wallet -->
+    <div class="row">
+      <label>ID Wallet</label>
+      <input id="walletId" type="text" size="60" readonly value="">
+    </div>
+
+    <hr>
+
+    <!-- Pengaturan QR Code -->
+    <div class="row">
+      <label>QR Public: X</label><input id="pubX" type="number" value="123">
+      <label>QR Public: Y</label><input id="pubY" type="number" value="358">
+      <label>QR Public Size</label><input id="pubSize" type="number" value="290">
+    </div>
+
+    <div class="row">
+      <label>QR Private: X</label><input id="privX" type="number" value="2430">
+      <label>QR Private: Y</label><input id="privY" type="number" value="310">
+      <label>QR Private Size</label><input id="privSize" type="number" value="355">
+    </div>
+
+    <div class="row">
+      <label>Text offset Y</label><input id="textOffset" type="number" value="205">
+      <label>Swap priv X/Y?</label><input id="swapPriv" type="checkbox">
+    </div>
+
+    <div class="row">
+      <label>Priv Text X</label><input id="privTextX" type="number" value="1900">
+      <label>Priv Text Y</label><input id="privTextY" type="number" value="750">
+    </div>
+
+    <!-- Pengaturan Tampilan ID -->
+    <div class="row">
+      <label>ID X</label><input id="idX" type="number" value="100">
+      <label>ID Y</label><input id="idY" type="number" value="220">
+      <label>ID Font Size</label><input id="idFont" type="number" value="60">
+    </div>
+
+    <!-- Tombol Aksi -->
+    <div style="display:flex;gap:8px;align-items:center;margin-top:12px;">
+      <button id="btnGenerate">Generate Preview</button>
+      <button id="btnPrint">Print / Save as PDF</button>
+      <div style="flex:1"></div>
+      <div class="muted">
+        <strong></strong>
+      </div>
+    </div>
+
+    <div id="msg" class="status"></div>
+    <div id="msgWarn" class="warning"></div>
+
+    <canvas id="canvas" width="2962" height="971"></canvas>
+  </div>
+
+  <!-- Libraries -->
+  <script src="libs/qrcode.min.js"></script>
+  <script src="libs/elliptic.min.js"></script>
+  <script src="libs/crypto-js.min.js"></script>
+
+  <script>
+    const CANVAS_W = 2962, CANVAS_H = 971;
+    const TEMPLATE = '1.jpg'; // Pastikan file ini ada di folder yang sama
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const btnGenerate = document.getElementById('btnGenerate');
+    const btnPrint = document.getElementById('btnPrint');
+    const btnGenerateKey = document.getElementById('btnGenerateKey');
+    const msg = document.getElementById('msg');
+    const msgWarn = document.getElementById('msgWarn');
+    const pubAddr = document.getElementById('pubAddr');
+    const privKey = document.getElementById('privKey');
+    const addrType = document.getElementById('addrType');
+
+    // Load background image
+    const bg = new Image();
+    bg.src = TEMPLATE;
+    let bgLoaded = false;
+
+    bg.onload = () => {
+      bgLoaded = true;
+      renderMessage('Template berhasil dimuat.');
+      renderBlank();
+    };
+
+    bg.onerror = () => {
+      renderMessage('Gagal memuat ' + TEMPLATE + ' — pastikan file ada di folder yang sama.', true);
+      renderBlank();
+    };
+
+    function renderBlank() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#666';
+      ctx.font = '20px Arial';
+      ctx.fillText('Preview kosong — klik Generate jika template dan input sudah benar.', 20, 40);
+    }
+
+    function renderMessage(text, isWarn = false) {
+      if (isWarn) {
+        msgWarn.textContent = text;
+        msg.textContent = '';
+      } else {
+        msg.textContent = text;
+        msgWarn.textContent = '';
+      }
+    }
+
+    // Base58 encode
+    const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+    function base58encode(bytes) {
+      let zeros = 0; while (zeros < bytes.length && bytes[zeros] === 0) zeros++;
+      let digits = [0];
+      for (let i = zeros; i < bytes.length; i++){
+        let carry = bytes[i];
+        for (let j = 0; j < digits.length; j++) {
+          carry += digits[j] * 256;
+          digits[j] = carry % 58;
+          carry = (carry / 58) | 0;
+        }
+        while (carry) { digits.push(carry % 58); carry = (carry / 58) | 0; }
+      }
+      let out = "1".repeat(zeros);
+      for (let k = digits.length - 1; k >= 0; k--) out += B58[digits[k]];
+      return out;
+    }
+
+    const hexToBytes = (hex) => Uint8Array.from(hex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+    const wordToHex = (w) => CryptoJS.enc.Hex.stringify(w);
+
+    // --- Bech32 Encoding ---
+    const BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+    function bech32Polymod(values) {
+      const GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+      let chk = 1;
+      for (const v of values) {
+        let top = chk >> 25;
+        chk = ((chk & 0x1ffffff) << 5) ^ v;
+        for (let i = 0; i < 5; i++) if ((top >> i) & 1) chk ^= GEN[i];
+      }
+      return chk;
+    }
+    function bech32HrpExpand(hrp) {
+      const ret = [];
+      for (let c of hrp) ret.push(c.charCodeAt(0) >> 5);
+      ret.push(0);
+      for (let c of hrp) ret.push(c.charCodeAt(0) & 31);
+      return ret;
+    }
+    function bech32CreateChecksum(hrp, data) {
+      const values = bech32HrpExpand(hrp).concat(data).concat([0, 0, 0, 0, 0, 0]);
+      const mod = bech32Polymod(values) ^ 1;
+      return [0,1,2,3,4,5].map(i => (mod >> (5 * (5 - i))) & 31);
+    }
+    function bech32Encode(hrp, data) {
+      const chk = bech32CreateChecksum(hrp, data);
+      const combined = data.concat(chk);
+      return hrp + '1' + combined.map(x => BECH32_CHARSET[x]).join('');
+    }
+    function toWords(bytes) {
+      let out = [], v = 0, bits = 0;
+      for (let i = 0; i < bytes.length; ++i) {
+        v = (v << 8) | bytes[i];
+        bits += 8;
+        while (bits >= 5) {
+          out.push((v >>> (bits - 5)) & 31);
+          bits -= 5;
+        }
+      }
+      if (bits > 0) out.push((v << (5 - bits)) & 31);
+      return out;
+    }
+
+    // PubKey to Address Functions
+    function pubkeyToP2PKH(pubHex) {
+      const pubWA = CryptoJS.enc.Hex.parse(pubHex);
+      const sha = CryptoJS.SHA256(pubWA);
+      const ripe = CryptoJS.RIPEMD160(sha);
+      const verPayloadHex = "00" + wordToHex(ripe);
+      const verWA = CryptoJS.enc.Hex.parse(verPayloadHex);
+      const checksum = CryptoJS.SHA256(CryptoJS.SHA256(verWA));
+      const chkHex = wordToHex(checksum).slice(0, 8);
+      const finalHex = verPayloadHex + chkHex;
+      return base58encode(hexToBytes(finalHex));
+    }
+
+    function pubkeyToP2SH_P2WPKH(pubHex) {
+      const pubWA = CryptoJS.enc.Hex.parse(pubHex);
+      const hash160 = CryptoJS.RIPEMD160(CryptoJS.SHA256(pubWA));
+      const scriptHex = "0014" + wordToHex(hash160);
+      const scriptWA = CryptoJS.enc.Hex.parse(scriptHex);
+      const scriptHash = CryptoJS.RIPEMD160(CryptoJS.SHA256(scriptWA));
+      const verPayloadHex = "05" + wordToHex(scriptHash);
+      const verWA = CryptoJS.enc.Hex.parse(verPayloadHex);
+      const checksum = CryptoJS.SHA256(CryptoJS.SHA256(verWA));
+      const chkHex = wordToHex(checksum).slice(0, 8);
+      const finalHex = verPayloadHex + chkHex;
+      return base58encode(hexToBytes(finalHex));
+    }
+
+    function pubkeyToBech32(pubHex) {
+      const pubBytes = hexToBytes(pubHex);
+      const sha = CryptoJS.SHA256(CryptoJS.enc.Hex.parse(pubHex));
+      const ripe = CryptoJS.RIPEMD160(sha);
+      const hash = hexToBytes(wordToHex(ripe));
+      const words = [0].concat(toWords(hash));
+      return bech32Encode("bc", words);
+    }
+
+    // Generate Otomatis
+    async function generateKey() {
+      try {
+        const ec = new elliptic.ec('secp256k1');
+        // Private key acak (secure)
+        const randomBytes = new Uint8Array(32);
+        crypto.getRandomValues(randomBytes);
+        let privHex = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+
+        // Pastikan tidak > curve order
+        const n = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141');
+        let privNum = BigInt('0x' + privHex);
+        if (privNum >= n || privNum === 0n) {
+          privNum = 1n;
+          privHex = '01'.padStart(64, '0');
+        }
+
+        const key = ec.keyFromPrivate(privHex);
+        const pubCompressed = key.getPublic(true, 'hex');
+        const pubUncompressed = key.getPublic(false, 'hex');
+
+        let address = '';
+        const type = addrType.value;
+
+        if (type === 'p2pkh_comp') {
+          address = pubkeyToP2PKH(pubCompressed);
+        } else if (type === 'p2pkh_uncomp') {
+          address = pubkeyToP2PKH(pubUncompressed);
+        } else if (type === 'p2sh_p2wpkh') {
+          address = pubkeyToP2SH_P2WPKH(pubCompressed);
+        } else if (type === 'bech32') {
+          address = pubkeyToBech32(pubCompressed);
+        }
+
+        // WIF (compressed by default)
+        const wif = encodeWIF(privHex);
+
+        // Isi form
+        pubAddr.value = address;
+        privKey.value = wif;
+
+        // Generate dan isi ID (timestamp Unix)
+        const walletId = Math.floor(Date.now() / 1000);
+        document.getElementById('walletId').value = 'ID : ' + walletId;
+
+        renderMessage(`Alamat ${type} berhasil dibuat: ${address}`);
+      } catch (e) {
+        renderMessage('Error saat generate: ' + e.message, true);
+      }
+    }
+
+    // Encode WIF (Compressed)
+    function encodeWIF(privHex) {
+      const extended = '80' + privHex + '01';
+      const firstSha = CryptoJS.SHA256(CryptoJS.enc.Hex.parse(extended));
+      const secondSha = CryptoJS.SHA256(firstSha);
+      const checksum = wordToHex(secondSha).slice(0, 8);
+      const final = extended + checksum;
+      return base58encode(hexToBytes(final));
+    }
+
+    // Buat QR sebagai gambar
+    function createQRImage(text, size) {
+      return new Promise((resolve) => {
+        const holder = document.createElement('div');
+        new QRCode(holder, { text: text || '', width: size, height: size });
+        setTimeout(() => {
+          const img = holder.querySelector('img');
+          const canvasQR = holder.querySelector('canvas');
+          let src = img ? img.src : canvasQR ? canvasQR.toDataURL('image/png') : null;
+          if (src) {
+            const qrImg = new Image();
+            qrImg.onload = () => { holder.remove(); resolve(qrImg); };
+            qrImg.onerror = () => { holder.remove(); resolve(null); };
+            qrImg.src = src;
+          } else {
+            holder.remove();
+            resolve(null);
+          }
+        }, 50);
+      });
+    }
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    async function generate() {
+      renderMessage('Menghasilkan preview...');
+
+      const pubAddrVal = pubAddr.value.trim();
+      const privKeyVal = privKey.value.trim();
+
+      let pubX = parseInt(document.getElementById('pubX').value) || 0;
+      let pubY = parseInt(document.getElementById('pubY').value) || 0;
+      let pubSize = parseInt(document.getElementById('pubSize').value) || 290;
+
+      let privX = parseInt(document.getElementById('privX').value) || 0;
+      let privY = parseInt(document.getElementById('privY').value) || 0;
+      let privSize = parseInt(document.getElementById('privSize').value) || 355;
+
+      const textOffset = parseInt(document.getElementById('textOffset').value) || 205;
+      const swapPriv = document.getElementById('swapPriv').checked;
+
+      if (swapPriv) [privX, privY] = [privY, privX];
+
+      pubX = clamp(pubX, 0, CANVAS_W - pubSize);
+      pubY = clamp(pubY, 0, CANVAS_H - pubSize);
+      privX = clamp(privX, 0, CANVAS_W - privSize);
+      privY = clamp(privY, 0, CANVAS_H - privSize);
+
+      if (!bgLoaded) {
+        renderMessage('Template belum terload.', true);
+        return;
+      }
+
+      ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.drawImage(bg, 0, 0, CANVAS_W, CANVAS_H);
+
+      const [qrPubImg, qrPrivImg] = await Promise.all([
+        createQRImage(pubAddrVal, pubSize),
+        createQRImage(privKeyVal, privSize)
+      ]);
+
+      if (qrPubImg) ctx.drawImage(qrPubImg, pubX, pubY, pubSize, pubSize);
+      else ctx.strokeRect(pubX, pubY, pubSize, pubSize);
+
+      if (qrPrivImg) ctx.drawImage(qrPrivImg, privX, privY, privSize, privSize);
+      else ctx.strokeRect(privX, privY, privSize, privSize);
+
+      ctx.font = 'bold 30px "Courier New", monospace';
+      ctx.fillStyle = '#000';
+      ctx.shadowColor = 'rgba(0,0,0,0.2)';
+      ctx.shadowOffsetX = 1;
+      ctx.shadowOffsetY = 1;
+      ctx.shadowBlur = 2;
+
+      const pubTextY = pubY + pubSize + textOffset;
+      wrapText(ctx, pubAddrVal, pubX, pubTextY, 800, 36);
+
+      const privTextX = parseInt(document.getElementById('privTextX').value) || privX;
+      const privTextY = parseInt(document.getElementById('privTextY').value) || (privY + privSize + textOffset);
+      wrapText(ctx, privKeyVal, privTextX, privTextY, 1100, 36);
+
+      // Tampilkan ID di kanvas
+      const walletIdDisplay = document.getElementById('walletId').value;
+      if (walletIdDisplay) {
+        const idX = parseInt(document.getElementById('idX').value) || 2000;
+        const idY = parseInt(document.getElementById('idY').value) || 930;
+        const idFont = parseInt(document.getElementById('idFont').value) || 46;
+
+        ctx.font = `bold ${idFont}px "Courier New", monospace`;
+        ctx.fillStyle = '#000';
+        ctx.shadowColor = 'rgba(0,0,0,0.2)';
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+        ctx.shadowBlur = 2;
+        ctx.fillText(walletIdDisplay, idX, idY);
+
+        // Reset shadow
+        ctx.shadowColor = 'transparent';
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.shadowBlur = 0;
+      }
+
+      renderMessage('Preview siap. Klik "Print / Save as PDF".');
+    }
+
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+      let line = '';
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const testLine = line + char;
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && line.length > 0) {
+          ctx.fillText(line, x, y);
+          line = char;
+          y += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, x, y);
+    }
+
+    // Event Listeners
+    btnGenerateKey.addEventListener('click', generateKey);
+    btnGenerate.addEventListener('click', generate);
+    btnPrint.addEventListener('click', () => {
+      if (!bgLoaded) {
+        renderMessage('Harap generate dulu.', true);
+        return;
+      }
+      window.print();
+    });
+
+    // Inisialisasi
+    renderBlank();
+  </script>
+</body>
+</html>
